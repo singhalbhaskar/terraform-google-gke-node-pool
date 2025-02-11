@@ -1,0 +1,140 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: blueprints.cloud.google.com/v1alpha1
+kind: BlueprintMetadata
+metadata:
+  name: terraform-google-gke-node-pool-display
+  annotations:
+    config.kubernetes.io/local-config: "true"
+spec:
+  info:
+    title: terraform-google-gke-node-pool
+    source:
+      repo: https://github.com/singhalbhaskar/terraform-google-gke-node-pool.git
+      sourceType: git
+  ui:
+    input:
+      variables:
+        additional_networks:
+          name: additional_networks
+          title: Additional Networks
+        auto_upgrade:
+          name: auto_upgrade
+          title: Auto Upgrade
+        autoscaling_total_max_nodes:
+          name: autoscaling_total_max_nodes
+          title: Autoscaling Total Max Nodes
+        autoscaling_total_min_nodes:
+          name: autoscaling_total_min_nodes
+          title: Autoscaling Total Min Nodes
+        cluster_id:
+          name: cluster_id
+          title: Cluster Id
+        compact_placement:
+          name: compact_placement
+          title: Compact Placement
+        disk_size_gb:
+          name: disk_size_gb
+          title: Disk Size Gb
+        disk_type:
+          name: disk_type
+          title: Disk Type
+        enable_gcfs:
+          name: enable_gcfs
+          title: Enable Gcfs
+        enable_secure_boot:
+          name: enable_secure_boot
+          title: Enable Secure Boot
+        gke_version:
+          name: gke_version
+          title: Gke Version
+        guest_accelerator:
+          name: guest_accelerator
+          title: Guest Accelerator
+        host_maintenance_interval:
+          name: host_maintenance_interval
+          title: Host Maintenance Interval
+        image_type:
+          name: image_type
+          title: Image Type
+        initial_node_count:
+          name: initial_node_count
+          title: Initial Node Count
+        internal_ghpc_module_id:
+          name: internal_ghpc_module_id
+          title: Internal Ghpc Module Id
+        kubernetes_labels:
+          name: kubernetes_labels
+          title: Kubernetes Labels
+        labels:
+          name: labels
+          title: Labels
+        local_ssd_count_ephemeral_storage:
+          name: local_ssd_count_ephemeral_storage
+          title: Local Ssd Count Ephemeral Storage
+        local_ssd_count_nvme_block:
+          name: local_ssd_count_nvme_block
+          title: Local Ssd Count Nvme Block
+        machine_type:
+          name: machine_type
+          title: Machine Type
+        name:
+          name: name
+          title: Name
+        placement_policy:
+          name: placement_policy
+          title: Placement Policy
+        project_id:
+          name: project_id
+          title: Project Id
+        reservation_affinity:
+          name: reservation_affinity
+          title: Reservation Affinity
+        service_account:
+          name: service_account
+          title: Service Account
+        service_account_email:
+          name: service_account_email
+          title: Service Account Email
+        service_account_scopes:
+          name: service_account_scopes
+          title: Service Account Scopes
+        spot:
+          name: spot
+          title: Spot
+        static_node_count:
+          name: static_node_count
+          title: Static Node Count
+        taints:
+          name: taints
+          title: Taints
+        threads_per_core:
+          name: threads_per_core
+          title: Threads Per Core
+        timeout_create:
+          name: timeout_create
+          title: Timeout Create
+        timeout_update:
+          name: timeout_update
+          title: Timeout Update
+        total_max_nodes:
+          name: total_max_nodes
+          title: Total Max Nodes
+        total_min_nodes:
+          name: total_min_nodes
+          title: Total Min Nodes
+        zones:
+          name: zones
+          title: Zones
