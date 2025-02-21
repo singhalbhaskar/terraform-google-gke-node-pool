@@ -241,7 +241,7 @@ locals {
 
 # apply manifest to enable tcpx
 module "kubectl_apply" {
-  source = "../../management/kubectl-apply"
+  source = "github.com/singhalbhaskar/terraform-google-kubectl-apply?ref=v0.0.1"
 
   cluster_id = var.cluster_id
   project_id = var.project_id
