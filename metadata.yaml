@@ -27,7 +27,7 @@ spec:
     version: 0.0.1
     actuationTool:
       flavor: Terraform
-      version: ">= 1.2"
+      version: ">= 1.3"
     description:
       tagline: This is an auto-generated module.
       detailed: "This module was generated from "
@@ -59,18 +59,21 @@ spec:
         description: projects/{{project}}/locations/{{location}}/clusters/{{cluster}}
         varType: string
         required: true
-      - name: zones
-        description: A list of zones to be used. Zones must be in region of cluster. If null, cluster zones will be inherited. Note `zones` not `zone`; does not work with `zone` deployment variable.
-        varType: list(string)
+        connections:
+          - source:
+              source: github.com/singhalbhaskar/terraform-google-gke-cluster
+              version: ">= 0.0.1"
+            spec:
+              outputExpr: cluster_id
+      - name: zone
+        description: A zone
+        varType: string
+        required: true
       - name: name
         description: |
           The name of the node pool. If not set, automatically populated by machine type and module id (unique blueprint-wide) as suffix.
           If setting manually, ensure a unique value across all gke-node-pools.
         varType: string
-      - name: internal_ghpc_module_id
-        description: DO NOT SET THIS MANUALLY. Automatically populates with module id (unique blueprint-wide).
-        varType: string
-        required: true
       - name: machine_type
         description: The name of a Google Compute Engine machine type.
         varType: string
@@ -132,9 +135,10 @@ spec:
         description: Total maximum number of nodes in the NodePool.
         varType: number
         defaultValue: 1000
-      - name: static_node_count
-        description: The static number of nodes in the node pool. If set, autoscaling will be disabled.
+      - name: node_count
+        description: The number of nodes in the node pool
         varType: number
+        required: true
       - name: auto_upgrade
         description: Whether the nodes will be automatically upgraded.
         varType: bool
@@ -167,6 +171,10 @@ spec:
       - name: compact_placement
         description: "DEPRECATED: Use `placement_policy`"
         varType: bool
+      - name: placement_policy_name
+        description: "Toolkit deployment variable: placement_policy_name"
+        varType: string
+        required: true
       - name: placement_policy
         description: |
           Group placement policy to use for the node pool's nodes. `COMPACT` is the only supported value for `type` currently. `name` is the name of the placement policy.
@@ -251,6 +259,12 @@ spec:
               }))
             }))
         defaultValue: []
+        connections:
+          - source:
+              source: github.com/singhalbhaskar/terraform-google-gke-cluster
+              version: ">= 0.0.1"
+            spec:
+              outputExpr: additional_networks
       - name: reservation_affinity
         description: |
           Reservation resource to consume. When targeting SPECIFIC_RESERVATION, specific_reservations needs be specified.
@@ -280,21 +294,23 @@ spec:
         description: GKE version
         varType: string
         required: true
+        connections:
+          - source:
+              source: github.com/singhalbhaskar/terraform-google-gke-cluster
+              version: ">= 0.0.1"
+            spec:
+              outputExpr: gke_version
+      - name: reservation
+        description: "Toolkit deployment variable: reservation"
+        varType: string
+        required: true
+      - name: reservation_block
+        description: "Toolkit deployment variable: reservation_block"
+        varType: string
+        required: true
     outputs:
-      - name: allocatable_cpu_per_node
-        description: Number of CPUs available for scheduling pods on each node.
-        type: number
-      - name: has_gpu
-        description: Boolean value indicating whether nodes in the pool are configured with GPUs.
-        type: bool
-      - name: instructions
-        description: Instructions for submitting the sample GPUDirect enabled job.
-        type: string
       - name: node_pool_name
         description: Name of the node pool.
-        type: string
-      - name: tolerations
-        description: Tolerations needed for a pod to be scheduled on this node pool.
         type: string
   requirements:
     roles:
@@ -306,13 +322,7 @@ spec:
       - storage-api.googleapis.com
       - serviceusage.googleapis.com
     providerVersions:
-      - source: gavinbunney/kubectl
-        version: ">= 1.7.0"
       - source: hashicorp/google
-        version: ~> 5.0
+        version: ">= 5, < 7"
       - source: hashicorp/google-beta
-        version: ~> 5.0
-      - source: hashicorp/http
-        version: ~> 3.0
-      - source: hashicorp/null
-        version: ~> 3.0
+        version: ">= 5, < 7"

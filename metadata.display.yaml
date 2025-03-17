@@ -93,15 +93,27 @@ spec:
         name:
           name: name
           title: Name
+        node_count:
+          name: node_count
+          title: Node Count
         placement_policy:
           name: placement_policy
           title: Placement Policy
+        placement_policy_name:
+          name: placement_policy_name
+          title: Placement Policy Name
         project_id:
           name: project_id
           title: Project Id
+        reservation:
+          name: reservation
+          title: Reservation
         reservation_affinity:
           name: reservation_affinity
           title: Reservation Affinity
+        reservation_block:
+          name: reservation_block
+          title: Reservation Block
         service_account:
           name: service_account
           title: Service Account
@@ -135,6 +147,9 @@ spec:
         total_min_nodes:
           name: total_min_nodes
           title: Total Min Nodes
+        zone:
+          name: zone
+          title: Zone
         zones:
           name: zones
           title: Zones
