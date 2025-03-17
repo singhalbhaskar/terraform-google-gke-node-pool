@@ -15,6 +15,31 @@
   */
 
 locals {
+  additional_networks     = flatten([var.additional_networks])
+  # host_maintenance_interval = "PERIODIC"
+  internal_ghpc_module_id   = "a3_megagpu_pool"
+  machine_type              = "a3-megagpu-8g"
+  placement_policy = var.placement_policy_name == "" ? {
+    policy_type = ""
+  } : {
+    policy_type = "COMPACT"
+    policy_name = var.placement_policy_name
+  }
+  reservation_affinity = (var.reservation != "" ? {
+      consume_reservation_type = "SPECIFIC_RESERVATION"
+      specific_reservations = [{
+        name = var.reservation_block == "" ? "${var.reservation}" : "${var.reservation}/reservationBlocks/${var.reservation_block}"
+        project = var.project_id
+      }]
+    } : {
+      consume_reservation_type = "NO_RESERVATION"
+      specific_reservations    = []
+    }
+  )
+  local_ssd_count_ephemeral_storage = 16
+  static_node_count = var.node_count
+  zones             = [var.zone]
+  guest_accelerator = []
   # This label allows for billing report tracking based on module.
   labels = merge(var.labels, { ghpc_module = "gke-node-pool", ghpc_role = "compute" })
 }
@@ -29,20 +54,21 @@ locals {
   }] : []
 
   autoscale_set    = var.autoscaling_total_min_nodes != 0 || var.autoscaling_total_max_nodes != 1000
-  static_node_set  = var.static_node_count != null
+  static_node_set  = local.static_node_count != null
   initial_node_set = try(var.initial_node_count > 0, false)
 
-  module_unique_id = replace(lower(var.internal_ghpc_module_id), "/[^a-z0-9\\-]/", "")
+  module_unique_id = replace(lower(local.internal_ghpc_module_id), "/[^a-z0-9\\-]/", "")
 }
 
 resource "google_container_node_pool" "node_pool" {
   provider = google-beta
 
   name           = coalesce(var.name, "${var.machine_type}-${local.module_unique_id}")
+  project = var.project_id
   cluster        = var.cluster_id
-  node_locations = var.zones
+  node_locations = local.zones
 
-  node_count = var.static_node_count
+  node_count = local.static_node_count
   dynamic "autoscaling" {
     for_each = local.static_node_set ? [] : [1]
     content {
@@ -66,10 +92,10 @@ resource "google_container_node_pool" "node_pool" {
   }
 
   dynamic "placement_policy" {
-    for_each = var.placement_policy.policy_type != "" ? [1] : []
+    for_each = local.placement_policy.policy_type != "" ? [1] : []
     content {
-      type        = var.placement_policy.policy_type
-      policy_name = var.placement_policy.policy_name
+      type        = local.placement_policy.policy_type
+      policy_name = local.placement_policy.policy_name
     }
   }
 
@@ -84,16 +110,16 @@ resource "google_container_node_pool" "node_pool" {
     spot            = var.spot
     image_type      = var.image_type
 
-    dynamic "guest_accelerator" {
-      for_each = { for idx, ga in local.guest_accelerator : idx => ga if ga.count > 0 }
-      content {
-        type                           = coalesce(guest_accelerator.value.type, try(local.generated_guest_accelerator[0].type, ""))
-        count                          = coalesce(try(guest_accelerator.value.count, 0) > 0 ? guest_accelerator.value.count : try(local.generated_guest_accelerator[0].count, "0"))
-        gpu_driver_installation_config = coalescelist(try(guest_accelerator.value.gpu_driver_installation_config, []), [{ gpu_driver_version = "DEFAULT" }])
-        gpu_partition_size             = try(guest_accelerator.value.gpu_partition_size, "")
-        gpu_sharing_config             = try(guest_accelerator.value.gpu_sharing_config, null)
-      }
-    }
+#    dynamic "guest_accelerator" {
+#      for_each = { for idx, ga in local.guest_accelerator : idx => ga if ga.count > 0 }
+#      content {
+#        type                           = coalesce(guest_accelerator.value.type, try(local.generated_guest_accelerator[0].type, ""))
+#        count                          = coalesce(try(guest_accelerator.value.count, 0) > 0 ? guest_accelerator.value.count : try(local.generated_guest_accelerator[0].count, "0"))
+#        gpu_driver_installation_config = coalescelist(try(guest_accelerator.value.gpu_driver_installation_config, []), [{ gpu_driver_version = "DEFAULT" }])
+#        gpu_partition_size             = try(guest_accelerator.value.gpu_partition_size, "")
+#        gpu_sharing_config             = try(guest_accelerator.value.gpu_sharing_config, null)
+#      }
+#    }
 
     dynamic "taint" {
       for_each = concat(var.taints, local.gpu_taint)
@@ -158,7 +184,7 @@ resource "google_container_node_pool" "node_pool" {
     }
 
     reservation_affinity {
-      consume_reservation_type = var.reservation_affinity.consume_reservation_type
+      consume_reservation_type = local.reservation_affinity.consume_reservation_type
       key                      = length(local.verified_specific_reservations) != 1 ? null : local.reservation_resource_api_label
       values                   = length(local.verified_specific_reservations) != 1 ? null : [for r in local.verified_specific_reservations : "projects/${r.project}/reservations/${r.name}"]
     }
@@ -173,7 +199,7 @@ resource "google_container_node_pool" "node_pool" {
 
   network_config {
     dynamic "additional_node_network_configs" {
-      for_each = var.additional_networks
+      for_each = local.additional_networks
 
       content {
         network    = additional_node_network_configs.value.network
@@ -208,54 +234,49 @@ resource "google_container_node_pool" "node_pool" {
       condition     = !(coalesce(local.local_ssd_config.local_ssd_count_ephemeral_storage, 0) > 0 && coalesce(local.local_ssd_config.local_ssd_count_nvme_block, 0) > 0)
       error_message = "Only one of local_ssd_count_ephemeral_storage or local_ssd_count_nvme_block can be set to a non-zero value."
     }
-    precondition {
-      condition = (
-        (var.reservation_affinity.consume_reservation_type != "SPECIFIC_RESERVATION" && local.input_specific_reservations_count == 0) ||
-        (var.reservation_affinity.consume_reservation_type == "SPECIFIC_RESERVATION" && local.input_specific_reservations_count == 1)
-      )
-      error_message = <<-EOT
-      When using NO_RESERVATION or ANY_RESERVATION as the `consume_reservation_type`, `specific_reservations` cannot be set.
-      On the other hand, with SPECIFIC_RESERVATION you must set `specific_reservations`.
-      EOT
-    }
-    precondition {
-      condition = (
-        (local.input_specific_reservations_count == 0) ||
-        (local.input_specific_reservations_count == 1 && length(local.verified_specific_reservations) > 0 && length(local.specific_reservation_requirement_violations) == 0)
-      )
-      error_message = <<-EOT
-      Check if your reservation is configured correctly:
-      1. A reservation with the name must exist in the specified project and one of the specified zones
-      2. Its consumption type must be "specific"
-      3. Its VM Properties must match with those of the Node Pool; Machine type, Accelerators (GPU Type and count), Local SSD disk type and count
-      EOT
-    }
+#    precondition {
+#      condition = (
+#        (local.reservation_affinity.consume_reservation_type != "SPECIFIC_RESERVATION" && local.input_specific_reservations_count == 0) ||
+#        (local.reservation_affinity.consume_reservation_type == "SPECIFIC_RESERVATION" && local.input_specific_reservations_count == 1)
+#      )
+#      error_message = <<-EOT
+#      When using NO_RESERVATION or ANY_RESERVATION as the `consume_reservation_type`, `specific_reservations` cannot be set.
+#      On the other hand, with SPECIFIC_RESERVATION you must set `specific_reservations`.
+#      EOT
+#    }
+#    precondition {
+#      condition = (
+#        (local.input_specific_reservations_count == 0) ||
+#        (local.input_specific_reservations_count == 1 && length(local.verified_specific_reservations) > 0 && length(local.specific_reservation_requirement_violations) == 0)
+#      )
+#      error_message = <<-EOT
+#      Check if your reservation is configured correctly:
+#      1. A reservation with the name must exist in the specified project and one of the specified zones
+#      2. Its consumption type must be "specific"
+#      3. Its VM Properties must match with those of the Node Pool; Machine type, Accelerators (GPU Type and count), Local SSD disk type and count
+#      EOT
+#    }
   }
 }
 
 
-locals {
-  gpu_direct_setting = lookup(local.gpu_direct_settings, var.machine_type, { gpu_direct_manifests = [], updated_workload_path = "", rxdm_version = "" })
-}
+#locals {
+#  gpu_direct_setting = lookup(local.gpu_direct_settings, var.machine_type, { gpu_direct_manifests = [], updated_workload_path = "", rxdm_version = "" })
+#}
 
 
 # apply manifest to enable tcpx
-module "kubectl_apply" {
-  source = "github.com/singhalbhaskar/terraform-google-kubectl-apply?ref=v0.0.1"
-
-  cluster_id = var.cluster_id
-  project_id = var.project_id
-
-  apply_manifests = flatten([
-    for manifest in local.gpu_direct_setting.gpu_direct_manifests : [
-      {
-        source = manifest
-      }
-    ]
-  ])
-
-  providers = {
-    kubectl = kubectl
-    http    = http
-  }
-}
+#module "kubectl_apply" {
+#  source = "github.com/singhalbhaskar/terraform-google-kubectl-apply?ref=v0.0.1"
+#
+#  cluster_id = var.cluster_id
+#  project_id = var.project_id
+#
+#  apply_manifests = flatten([
+#    for manifest in local.gpu_direct_setting.gpu_direct_manifests : [
+#      {
+#        source = manifest
+#      }
+#    ]
+#  ])
+#}

@@ -20,7 +20,7 @@ data "google_compute_reservation" "specific_reservations" {
     {} :
     {
       for pair in flatten([
-        for zone in try(var.zones, []) : [
+        for zone in try(local.zones, []) : [
           for reservation in try(var.reservation_affinity.specific_reservations, []) : {
             key : "${coalesce(reservation.project, var.project_id)}/${zone}/${reservation.name}"
             zone : zone
@@ -49,13 +49,13 @@ locals {
     "machine_type" : try(r.specific_reservation[0].instance_properties[0].machine_type, "")
     "guest_accelerators" : { for acc in try(r.specific_reservation[0].instance_properties[0].guest_accelerators, []) : acc.accelerator_type => acc.accelerator_count },
   }]
-  nodepool_vm_properties = {
-    "machine_type" : var.machine_type
-    "guest_accelerators" : { for acc in try(local.guest_accelerator, []) : (acc.count > 0 ? coalesce(acc.type, try(local.generated_guest_accelerator[0].type, "")) : "") => acc.count if acc.count > 0 },
-  }
-
-  # Compare two maps by counting the keys that mismatch.
-  # Know that in map comparison the order of keys does not matter. That is {NVME: x, SCSI: y} and {SCSI: y, NVME: x} are equal
-  # As of this writing, there is only one reservation supported by the Node Pool API. So, directly accessing it from the list
-  specific_reservation_requirement_violations = length(local.reservation_vm_properties) == 0 ? [] : [for k, v in local.nodepool_vm_properties : k if v != local.reservation_vm_properties[0][k]]
+#  nodepool_vm_properties = {
+#    "machine_type" : var.machine_type
+#    "guest_accelerators" : { for acc in try(local.guest_accelerator, []) : (acc.count > 0 ? coalesce(acc.type, try(local.generated_guest_accelerator[0].type, "")) : "") => acc.count if acc.count > 0 },
+#  }
+#
+#  # Compare two maps by counting the keys that mismatch.
+#  # Know that in map comparison the order of keys does not matter. That is {NVME: x, SCSI: y} and {SCSI: y, NVME: x} are equal
+#  # As of this writing, there is only one reservation supported by the Node Pool API. So, directly accessing it from the list
+#  specific_reservation_requirement_violations = length(local.reservation_vm_properties) == 0 ? [] : [for k, v in local.nodepool_vm_properties : k if v != local.reservation_vm_properties[0][k]]
 }

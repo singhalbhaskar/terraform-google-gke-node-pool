@@ -24,10 +24,9 @@ variable "cluster_id" {
   type        = string
 }
 
-variable "zones" {
-  description = "A list of zones to be used. Zones must be in region of cluster. If null, cluster zones will be inherited. Note `zones` not `zone`; does not work with `zone` deployment variable."
-  type        = list(string)
-  default     = null
+variable "zone" {
+  description = "A zone"
+  type        = string
 }
 
 variable "name" {
@@ -37,11 +36,6 @@ variable "name" {
     EOD
   type        = string
   default     = null
-}
-
-variable "internal_ghpc_module_id" {
-  description = "DO NOT SET THIS MANUALLY. Automatically populates with module id (unique blueprint-wide)."
-  type        = string
 }
 
 variable "machine_type" {
@@ -132,10 +126,9 @@ variable "autoscaling_total_max_nodes" {
   default     = 1000
 }
 
-variable "static_node_count" {
-  description = "The static number of nodes in the node pool. If set, autoscaling will be disabled."
+variable "node_count" {
+  description = "The number of nodes in the node pool"
   type        = number
-  default     = null
 }
 
 variable "auto_upgrade" {
@@ -188,6 +181,11 @@ variable "compact_placement" {
     condition     = var.compact_placement == null
     error_message = "`compact_placement` is deprecated. Use `placement_policy` instead"
   }
+}
+
+variable "placement_policy_name" {
+  description = "Toolkit deployment variable: placement_policy_name"
+  type        = string
 }
 
 variable "placement_policy" {
@@ -370,5 +368,15 @@ variable "initial_node_count" {
 
 variable "gke_version" {
   description = "GKE version"
+  type        = string
+}
+
+variable "reservation" {
+  description = "Toolkit deployment variable: reservation"
+  type        = string
+}
+
+variable "reservation_block" {
+  description = "Toolkit deployment variable: reservation_block"
   type        = string
 }
